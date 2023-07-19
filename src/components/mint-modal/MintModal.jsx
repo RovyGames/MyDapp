@@ -153,7 +153,7 @@ const MintModal = () => {
             <MintModalText>
               {totalSupply}/{maxSupply}
             </MintModalText>
-            <MintModalText>{ethers.utils.formatEther(price.toString())} ETH</MintModalText>
+            <MintModalText>{ethers.utils.formatEther(price.toString()) * amount} ETH</MintModalText>
             <MintModalAmountSection>
               <MintModalButtonMinus
                 onClick={() => amount > 1 && setAmount(amount - 1)}
