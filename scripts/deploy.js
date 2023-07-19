@@ -13,8 +13,6 @@ async function main() {
   console.log("Deploying contracts with the account:", deployer.address);
 
   const happyPika = await hre.ethers.deployContract("HappyPika");
-
-  console.log("HappyPika address:", await happyPika.getAddress());
 }
 
 main()

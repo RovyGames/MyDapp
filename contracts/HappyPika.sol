@@ -41,7 +41,7 @@ contract HappyPika is ERC721, ERC721Enumerable, Pausable, Ownable {
     // Utilities
 
     function setCost(uint256 newPrice) public onlyOwner {
-        MINT_PRICE = newPrice * 1 ether;
+        MINT_PRICE = newPrice;
     }
 
     function getCost() public view returns (uint256) {

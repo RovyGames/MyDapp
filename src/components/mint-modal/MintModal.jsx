@@ -15,7 +15,7 @@ import HappyPika from "../../artifacts/contracts/HappyPika.sol/HappyPika.json";
 import Spinner from "react-spinner-material";
 
 const MintModal = () => {
-  const CONTRACT_ADDRESS = "0x9Fd81a47C8c99736CC479ab368501f25C7b01526";
+  const CONTRACT_ADDRESS = "0x020aD24E43bBdd4B00fA2F39A69A5F42f26c97a5";
 
   const provider = useMemo(() => new ethers.providers.Web3Provider(window.ethereum), []);
 
@@ -71,7 +71,6 @@ const MintModal = () => {
   const handleMint = async () => {
     try {
       const adr = provider.getSigner().getAddress();
-      console.log(await contract.whitelist(adr));
 
       const result = await contract.safeMint(adr, amount, {
         value: (amount * price).toString(),
@@ -154,7 +153,7 @@ const MintModal = () => {
             <MintModalText>
               {totalSupply}/{maxSupply}
             </MintModalText>
-            <MintModalText>{ethers.utils.formatEther(price)} ETH</MintModalText>
+            <MintModalText>{ethers.utils.formatEther(price.toString())} ETH</MintModalText>
             <MintModalAmountSection>
               <MintModalButtonMinus
                 onClick={() => amount > 1 && setAmount(amount - 1)}
