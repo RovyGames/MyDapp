@@ -13,17 +13,23 @@ import {
 import { ethers } from "ethers";
 import HappyPika from "../../artifacts/contracts/HappyPika.sol/HappyPika.json";
 import Spinner from "react-spinner-material";
+import { getProof } from "../../app/actions/merkle";
+import { CONTRACT_ADDRESS } from "../../app/constants/contract-constants";
 
 const MintModal = () => {
-  const CONTRACT_ADDRESS = "0x020aD24E43bBdd4B00fA2F39A69A5F42f26c97a5";
+  const [provider] = useState(
+    () => new ethers.providers.Web3Provider(window.ethereum)
+  );
 
-  const provider = useMemo(() => new ethers.providers.Web3Provider(window.ethereum), []);
-
-  const contract = useMemo(() => new ethers.Contract(
-    CONTRACT_ADDRESS,
-    HappyPika.abi,
-    provider.getSigner()
-  ), [provider]);
+  const contract = useMemo(
+    () =>
+      new ethers.Contract(
+        CONTRACT_ADDRESS,
+        HappyPika.abi,
+        provider.getSigner()
+      ),
+    [provider]
+  );
 
   const [defaultAccount, setDefaultAccount] = useState(null);
   const [amount, setAmount] = useState(1);
@@ -54,7 +60,7 @@ const MintModal = () => {
     const status = await contract.isPublicSale();
     setIsPublicSale(status);
   }, [contract]);
-  
+
   const getPauseStatus = useCallback(async () => {
     const status = await contract.paused();
     setIsPaused(status);
@@ -70,9 +76,11 @@ const MintModal = () => {
 
   const handleMint = async () => {
     try {
-      const adr = provider.getSigner().getAddress();
+      const adr = await provider.getSigner().getAddress();
 
-      const result = await contract.safeMint(adr, amount, {
+      const proof = getProof(adr);
+
+      const result = await contract.safeMint(adr, amount, proof, {
         value: (amount * price).toString(),
       });
 
@@ -83,6 +91,7 @@ const MintModal = () => {
       await getTotalSupply();
       await getPrice();
     } catch (err) {
+      console.error(err);
       setError(err.reason);
     }
   };
@@ -97,10 +106,6 @@ const MintModal = () => {
     const address = await newAccount.getAddress();
     setDefaultAccount(address);
     localStorage.setItem("address", JSON.stringify(address));
-  };
-
-  const handleInstallMetamask = () => {
-    window.open("https://metamask.io/download", "_blank");
   };
 
   useEffect(() => {
@@ -120,77 +125,64 @@ const MintModal = () => {
       }
     };
     init();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultAccount]);
 
-  if(isLoading)
-  {
-    return(
+  if (isLoading) {
+    return (
       <MintModalWrapper>
         <Spinner color={"#e6b9ff"} />
       </MintModalWrapper>
     );
   }
-
-  if (window.ethereum) {
-    if (!defaultAccount) {
+  if (!defaultAccount) {
+    return (
+      <MintModalWrapper>
+        <MintModalButton>
+          <MintModalButtonText onClick={handleWalletConnection}>
+            Connect
+          </MintModalButtonText>
+        </MintModalButton>
+      </MintModalWrapper>
+    );
+  } else {
+    if (!isPaused) {
       return (
         <MintModalWrapper>
+          <MintModalText>
+            {error ? error : isPublicSale ? "Mint live!" : "Premint live!"}
+          </MintModalText>
+          <MintModalText>
+            {totalSupply}/{maxSupply}
+          </MintModalText>
+          <MintModalText>
+            {ethers.utils.formatEther(price.toString()) * amount} ETH
+          </MintModalText>
+          <MintModalAmountSection>
+            <MintModalButtonMinus
+              onClick={() => amount > 1 && setAmount(amount - 1)}
+            >
+              <MintModalButtonText>-</MintModalButtonText>
+            </MintModalButtonMinus>
+            <MintModalAmountInput>
+              <MintModalButtonText>{amount}</MintModalButtonText>
+            </MintModalAmountInput>
+            <MintModalButtonPlus onClick={() => setAmount(amount + 1)}>
+              <MintModalButtonText>+</MintModalButtonText>
+            </MintModalButtonPlus>
+          </MintModalAmountSection>
           <MintModalButton>
-            <MintModalButtonText onClick={handleWalletConnection}>
-              Connect
-            </MintModalButtonText>
+            <MintModalButtonText onClick={handleMint}>Mint</MintModalButtonText>
           </MintModalButton>
         </MintModalWrapper>
       );
     } else {
-      if (!isPaused) {
-        return (
-          <MintModalWrapper>
-            <MintModalText>
-              {error ? error : isPublicSale ? "Mint live!" : "Premint live!"}
-            </MintModalText>
-            <MintModalText>
-              {totalSupply}/{maxSupply}
-            </MintModalText>
-            <MintModalText>{ethers.utils.formatEther(price.toString()) * amount} ETH</MintModalText>
-            <MintModalAmountSection>
-              <MintModalButtonMinus
-                onClick={() => amount > 1 && setAmount(amount - 1)}
-              >
-                <MintModalButtonText>-</MintModalButtonText>
-              </MintModalButtonMinus>
-              <MintModalAmountInput>
-                <MintModalButtonText>{amount}</MintModalButtonText>
-              </MintModalAmountInput>
-              <MintModalButtonPlus onClick={() => setAmount(amount + 1)}>
-                <MintModalButtonText>+</MintModalButtonText>
-              </MintModalButtonPlus>
-            </MintModalAmountSection>
-            <MintModalButton>
-              <MintModalButtonText onClick={handleMint}>
-                Mint
-              </MintModalButtonText>
-            </MintModalButton>
-          </MintModalWrapper>
-        );
-      } else {
-        return (
-          <MintModalWrapper>
-            <MintModalText>Sale closed!</MintModalText>
-          </MintModalWrapper>
-        );
-      }
+      return (
+        <MintModalWrapper>
+          <MintModalText>Sale closed!</MintModalText>
+        </MintModalWrapper>
+      );
     }
-  } else {
-    return (
-      <MintModalWrapper>
-        <MintModalText>Install Metamask</MintModalText>
-        <MintModalButton onClick={handleInstallMetamask}>
-          <MintModalButtonText>Install</MintModalButtonText>
-        </MintModalButton>
-      </MintModalWrapper>
-    );
   }
 };
 
