@@ -5,6 +5,7 @@ import {
   MintPageGradient,
 } from "./MintPage.styled";
 import MintModal from "../mint-modal";
+import InstallMetamaskCard from "../mint-modal/install-metamask";
 import bgGradient from "./assets/bg-gradient.svg";
 
 const MintPage = () => {
@@ -13,7 +14,7 @@ const MintPage = () => {
       <MintPageGradient src={bgGradient} alt="bg-gradient" />
       <MintModalContainer>
         <MintModalTitle>Mint your NFT!</MintModalTitle>
-        <MintModal />
+        {window.ethereum ? <MintModal /> : <InstallMetamaskCard />}
       </MintModalContainer>
     </MintPageContainer>
   );

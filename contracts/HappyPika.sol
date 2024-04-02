@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
 
 contract HappyPika is ERC721, ERC721Enumerable, Pausable, Ownable {
 
@@ -23,22 +24,30 @@ contract HappyPika is ERC721, ERC721Enumerable, Pausable, Ownable {
     uint256 public MAX_SUPPLY = 400;
     uint256 public MAX_PER_WALLET = 2;
 
-    mapping(address => bool) public whitelist;
-
     bool public isPublicSale = false;
 
-    // Constructor and URI declaration
+    bytes32 public merkleRoot;
 
-    constructor() ERC721("HappyPika", "HPK") {
+    string private _baseTokenURI;
+
+    // Constructor
+
+    constructor(bytes32 merkleRoot_, string memory _URI) ERC721("HappyPika", "HPK") {
         _tokenIdCounter.increment(); // Token id starts from 1
         pause();
-    }
-
-    function _baseURI() internal pure override returns (string memory) {
-        return "ipfs://bafybeibh75isfe5sdby2xha57cnke3dyubmhp2m6yq2hmc6ogr63w4yp5e/";
+        merkleRoot = merkleRoot_;
+        _baseTokenURI = _URI;
     }
 
     // Utilities
+
+    function _baseURI() internal view override returns (string memory) {
+        return _baseTokenURI;
+    }
+
+    function setURI(string memory newURI) public onlyOwner {
+        _baseTokenURI = newURI;
+    }
 
     function setCost(uint256 newPrice) public onlyOwner {
         MINT_PRICE = newPrice;
@@ -69,20 +78,6 @@ contract HappyPika is ERC721, ERC721Enumerable, Pausable, Ownable {
         payable(owner()).transfer(address(this).balance);
     }
 
-    // Whitelist logic
-
-    function addToWhitelist(address[] calldata toAddAddresses) external onlyOwner {
-        for (uint i = 0; i < toAddAddresses.length; i++) {
-            whitelist[toAddAddresses[i]] = true;
-        }
-    }
-
-    function removeFromWhitelist(address[] calldata toRemoveAddresses) external onlyOwner {
-        for (uint i = 0; i < toRemoveAddresses.length; i++) {
-            delete whitelist[toRemoveAddresses[i]];
-        }
-    }
-
     function togglePublicSale() public onlyOwner {
         isPublicSale = !isPublicSale;
     }
@@ -99,15 +94,16 @@ contract HappyPika is ERC721, ERC721Enumerable, Pausable, Ownable {
 
     // Minting functions
 
-    function safeMint(address to, uint amount) public payable whenNotPaused {
-        if (!isPublicSale)
-        {
-            require(whitelist[to], "Address is not in whitelist.");
-        }
-
+    function safeMint(address to, uint amount, bytes32[] calldata merkleProof) public payable whenNotPaused {
         require(totalSupply() < MAX_SUPPLY, "Can't mint anymore NFTs.");
         require(balanceOf(to) + amount <= MAX_PER_WALLET, "Maximum amount of NFTs per wallet reached.");
         require(msg.value >= MINT_PRICE * amount, "Not enough ether in balance.");
+
+        bytes32 node = keccak256(abi.encodePacked(to));
+
+        if (!isPublicSale) {
+            require(MerkleProof.verify(merkleProof, merkleRoot, node), "Invalid merkle proof.");
+        }
 
         for (uint i = 0; i < amount; i++) {
             uint256 tokenId = _tokenIdCounter.current();
